@@ -19,12 +19,13 @@ namespace genoaf::scene
         assert(_root);
         assert(0 == _root->_level);
         changeLevel(*_root, _root->_level, kNoIndex);
+        _root->_level = kNoIndex;
         _root.reset();
     }
 
     void Tree::finish()
     {
-        _minDirtyLevel = _dirtyLevels.size() - 1;
+        _minDirtyLevel = kNoIndex;
         _maxDirtyLevel = 0;
 
 #       ifndef NDEBUG
@@ -85,11 +86,12 @@ namespace genoaf::scene
 
                     assert(levelIndex < dirtyNodes.size());
                     assert(dirtyNodes[levelIndex] == &node);
-                    dirtyNodes[levelIndex] = dirtyNodes.back();
-
-                    assert(dirtyNodes[levelIndex]);
-                    assert(dirtyNodes[levelIndex]->_levelIndeces[passIndex] == dirtyNodes.size() - 1);
-                    dirtyNodes[levelIndex]->_levelIndeces[passIndex] = levelIndex;
+                    if (levelIndex + 1 < dirtyNodes.size()) [[unlikely]]
+                    {
+                        dirtyNodes[levelIndex] = dirtyNodes.back();
+                        assert(dirtyNodes[levelIndex]);
+                        dirtyNodes[levelIndex]->_levelIndeces[passIndex] = levelIndex;
+                    }
                     dirtyNodes.pop_back();
 
                     node._levelIndeces[passIndex] = kNoIndex;

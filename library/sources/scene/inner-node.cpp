@@ -52,7 +52,7 @@ namespace genoaf::scene
     {
         if (path.empty())
         {
-            return _tree.root().shared_from_this();
+            return shared_from_this();
         }
 
         InnerNode const * current = this;

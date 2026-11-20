@@ -27,14 +27,22 @@ namespace genoaf::scene
         InnerNode const & root() const { assert(_root); return *_root; }
 
     public:
-        // Function signature is the following:
-        //      bool(Node &)
+        // TODO: how to re-validate disappeared Nodes?
+
+        // The callback's signature is the following:
+        //      void (Node &)
         //
-        // It must return true if the node has been
-        // revalidated, and it can be removed from dirty-list.
+        // It is assumed that the callback will revalidate node,
+        // therefore, it can be removed from dirty-list.
         template<typename Function>
         void revalidate(RevalidationPass pass, Function function)
         {
+            if (_minDirtyLevel > _maxDirtyLevel ||
+                _minDirtyLevel == kNoIndex)
+            {
+                return;
+            }
+
             size_t const passIndex = static_cast<size_t>(pass);
             for(size_t level = _minDirtyLevel; level <= _maxDirtyLevel; ++level)
             {
@@ -44,27 +52,17 @@ namespace genoaf::scene
                 assert(passIndex < dirtyLevel.size());
                 DirtyNodes & dirtyNodes = dirtyLevel[passIndex];
 
-                for(size_t i = 0; i < dirtyNodes.size();)
+                while(!dirtyNodes.empty())
                 {
-                    assert(dirtyNodes[i]);
-                    Node & current = *dirtyNodes[i];
-                    if (function(current))
-                    {
-                        assert(i < dirtyNodes.size());
-                        assert(dirtyNodes[i]->_levelIndeces[passIndex] == i);
-                        dirtyNodes[i] = dirtyNodes.back();
+                    assert(dirtyNodes.back());
+                    Node & current = *dirtyNodes.back();
 
-                        assert(dirtyNodes[i]);
-                        assert(dirtyNodes[i]->_levelIndeces[passIndex] == dirtyNodes.size() - 1);
-                        dirtyNodes[i]->_levelIndeces[passIndex] = i;
-                        dirtyNodes.pop_back();
+                    function(current);
 
-                        current._levelIndeces[passIndex] = kNoIndex;
-                    }
-                    else
-                    {
-                        ++i;
-                    }
+                    assert(current._levelIndeces[passIndex] == dirtyNodes.size() - 1);
+                    current._levelIndeces[passIndex] = kNoIndex;
+
+                    dirtyNodes.pop_back();
                 }
             }
         }
@@ -93,7 +91,7 @@ namespace genoaf::scene
 
         std::shared_ptr<InnerNode> _root;
         std::vector<DirtyLevel>    _dirtyLevels;
-        size_t                     _minDirtyLevel = 0;
+        size_t                     _minDirtyLevel = kNoIndex;
         size_t                     _maxDirtyLevel = 0;
 
         friend class Node;

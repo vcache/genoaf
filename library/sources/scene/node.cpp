@@ -26,14 +26,19 @@ namespace genoaf::scene
 
     void Node::setParent(std::shared_ptr<InnerNode> const & newParent)
     {
+        // early quit (prevents exception on attach())
+        auto oldParent = parent();
+        if (newParent == oldParent &&
+            (newParent || kNoIndex == _level))
+        {
+            return;
+        }
+
         // copy this's Sptr to extend lifetime to prevent
         // sudden destroy after "oldParent->detach()"
         [[maybe_unused]] Sptr thisGuard = shared_from_this();
 
-        if (auto oldParent = parent(); oldParent)
-        {
-            oldParent->detach(*this);
-        }
+        // TODO: if attach or detach throws, the node may become into broken state (double-parented)
 
         if (newParent)
         {
@@ -41,6 +46,12 @@ namespace genoaf::scene
         }
 
         _parent = newParent;
+
+        if (oldParent)
+        {
+            oldParent->detach(*this);
+        }
+
         updateLevel();
 
         markDirty(RevalidationPass::kStructure);

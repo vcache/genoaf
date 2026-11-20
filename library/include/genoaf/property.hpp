@@ -129,12 +129,23 @@ namespace genoaf
 
     public:
         template<typename T, typename = std::enable_if_t<!kIsProperty<T>>>
-        bool operator<=>(T const & other) const
+        bool operator==(T const & other) const
+        {
+            return _value == other;
+        }
+
+        bool operator==(Property const & other) const
+        {
+            return _value == other._value;
+        }
+
+        template<typename T, typename = std::enable_if_t<!kIsProperty<T>>>
+        auto operator<=>(T const & other) const
         {
             return _value <=> other;
         }
 
-        bool operator<=>(Property const & other) const
+        auto operator<=>(Property const & other) const
         {
             return _value <=> other._value;
         }

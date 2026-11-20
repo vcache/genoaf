@@ -61,4 +61,25 @@ namespace genoaf::test
         EXPECT_EQ(property.get(), 42);
         ASSERT_EQ(container.counter(), 1);
     }
+
+    TEST(Property, Comparison)
+    {
+        DummyContainer container;
+        Property<int, DummyContainer> p1(container, 10);
+        Property<int, DummyContainer> p2(container, 20);
+
+        EXPECT_TRUE(p1 == 10);
+        EXPECT_TRUE(p1 != 20);
+        EXPECT_TRUE(p1 < 20);
+        EXPECT_TRUE(p1 <= 10);
+        EXPECT_TRUE(p2 > 10);
+        EXPECT_TRUE(p2 >= 20);
+
+        EXPECT_TRUE(p1 == p1);
+        EXPECT_TRUE(p1 != p2);
+        EXPECT_TRUE(p1 < p2);
+        EXPECT_TRUE(p1 <= p2);
+        EXPECT_TRUE(p2 > p1);
+        EXPECT_TRUE(p2 >= p1);
+    }
 }

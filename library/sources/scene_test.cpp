@@ -219,10 +219,9 @@ namespace genoaf::scene::test
                 RevalidationPass const pass = static_cast<RevalidationPass>(passIndex);
                 Path & subResult = result[pass];
                 tree.revalidate(pass,
-                    [&subResult](Node const & node) -> bool
+                    [&subResult](Node const & node)
                     {
                         subResult.emplace_back(node.id());
-                        return true;
                     });
             }
             tree.finish();
@@ -295,5 +294,58 @@ namespace genoaf::scene::test
         auto logs = revalidateAndLog(tree);
         EXPECT_EQ(logs.at(RevalidationPass::kTransforms),
                   (Path{"sub-tree-b", "sub-tree-c"}));
+    }
+
+    TEST(Tree, ReparentEarlyQuit)
+    {
+        Tree tree;
+        auto & child = tree.root().emplace<Node>("child");
+        revalidateAndLog(tree);
+
+        child.setParent(tree.root());
+        auto logs = revalidateAndLog(tree);
+        EXPECT_TRUE(logs.at(RevalidationPass::kStructure).empty());
+    }
+
+    TEST(Tree, RelativeEmptyPath)
+    {
+        Tree tree;
+        auto & child = tree.root().emplace<InnerNode>("child");
+        EXPECT_EQ(child.find(Path{}), child.shared_from_this());
+        EXPECT_EQ(&child.at<InnerNode>(Path{}), &child);
+    }
+
+    TEST(Tree, FailedReparenting)
+    {
+        Tree tree;
+
+        auto & left = tree.root().emplace<InnerNode>("left");
+        auto & right = tree.root().emplace<InnerNode>("right");
+
+        auto & child = left.emplace<Node>("child");
+        right.emplace<Node>("child");
+
+        revalidateAndLog(tree); // flush pended changes
+
+        EXPECT_THROW(child.setParent(right), genoaf::Exception);
+
+        EXPECT_TRUE(left.contains("child"));
+        EXPECT_EQ(child.parent(), left.shared_from_this());
+
+        EXPECT_EQ(revalidateAndLog(tree).at(RevalidationPass::kStructure),
+                  (Path{}));
+    }
+
+    TEST(Tree, NodeUnmerge)
+    {
+        Tree tree;
+
+        auto & leaf = tree.root().emplace<Node>("leaf");
+        EXPECT_EQ(revalidateAndLog(tree).at(RevalidationPass::kStructure),
+                  (Path{"*", "leaf"}));
+
+        leaf.setParent({});
+        EXPECT_EQ(revalidateAndLog(tree).at(RevalidationPass::kStructure),
+                  (Path{"*"}));
     }
 }
