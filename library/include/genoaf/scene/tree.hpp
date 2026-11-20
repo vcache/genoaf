@@ -27,13 +27,16 @@ namespace genoaf::scene
         InnerNode const & root() const { assert(_root); return *_root; }
 
     public:
-        // TODO: how to re-validate disappeared Nodes?
-
         // The callback's signature is the following:
         //      void (Node &)
         //
         // It is assumed that the callback will revalidate node,
         // therefore, it can be removed from dirty-list.
+        //
+        // Erased or detached nodes won't be revalidated, but
+        // there are ways to handle this case:
+        //  - in Node's dtor
+        //  - in parent's node (_children will be changed)
         template<typename Function>
         void revalidate(RevalidationPass pass, Function function)
         {
