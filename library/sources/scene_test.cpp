@@ -1,42 +1,44 @@
 #include <gtest/gtest.h>
 
-#include <genoaf/node.hpp>
+#include <genoaf/scene/inner-node.hpp>
+#include <genoaf/scene/node.hpp>
+#include <genoaf/scene/tree.hpp>
 
 #include <unordered_map>
 
-namespace genoaf::test
+namespace genoaf::scene::test
 {
     // Basic structural operations
 
-    TEST(SceneTree, SmokeTest)
+    TEST(Tree, SmokeTest)
     {
-        SceneTree sceneTree;
+        Tree tree;
 
-        EXPECT_TRUE(sceneTree.root().empty());
-        EXPECT_EQ(sceneTree.root().size(), 0);
+        EXPECT_TRUE(tree.root().empty());
+        EXPECT_EQ(tree.root().size(), 0);
 
-        EXPECT_EQ(sceneTree.root().absPath(), Path{});
+        EXPECT_EQ(tree.root().absPath(), Path{});
 
-        EXPECT_EQ(sceneTree.root().begin(),
-                  sceneTree.root().end());
+        EXPECT_EQ(tree.root().begin(),
+                  tree.root().end());
 
-        EXPECT_FALSE(sceneTree.root().contains(""));
-        EXPECT_FALSE(sceneTree.root().contains("foo"));
-        EXPECT_FALSE(sceneTree.root().contains(Path{"*"}));
+        EXPECT_FALSE(tree.root().contains(""));
+        EXPECT_FALSE(tree.root().contains("foo"));
+        EXPECT_FALSE(tree.root().contains(Path{"*"}));
 
-        EXPECT_TRUE(sceneTree.root().contains(Path()));
-        ASSERT_TRUE(sceneTree.root().find(Path()));
-        EXPECT_EQ(sceneTree.root().find(Path()).get(),
-                  &sceneTree.root());
+        EXPECT_TRUE(tree.root().contains(Path()));
+        ASSERT_TRUE(tree.root().find(Path()));
+        EXPECT_EQ(tree.root().find(Path()).get(),
+                  &tree.root());
 
-        EXPECT_EQ(sceneTree.root().id(), "*");
-        EXPECT_EQ(sceneTree.root().level(), 0);
+        EXPECT_EQ(tree.root().id(), "*");
+        EXPECT_EQ(tree.root().level(), 0);
     }
 
-    TEST(SceneTree, LeafInsert)
+    TEST(Tree, LeafInsert)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         auto & node = root.emplace<Node>("leaf-1");
         EXPECT_EQ(node.absPath(), Path{"leaf-1"});
@@ -55,10 +57,10 @@ namespace genoaf::test
         EXPECT_FALSE(root.contains(Path{"leaf-2"}));
     }
 
-    TEST(SceneTree, TreeAddressing)
+    TEST(Tree, TreeAddressing)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         auto & level1 = root.emplace<InnerNode>("level-1");
         auto & level2 = level1.emplace<InnerNode>("level-2");
@@ -85,10 +87,10 @@ namespace genoaf::test
         EXPECT_EQ(root.find(Path{"level-1", "level-2", "level-3"}), level3.shared_from_this());
     }
 
-    TEST(SceneTree, At)
+    TEST(Tree, At)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         root.emplace<InnerNode>("inner");
         EXPECT_NO_THROW(root.at<InnerNode>("inner"));
@@ -109,10 +111,10 @@ namespace genoaf::test
 
     }
 
-    TEST(SceneTree, RemoveTrivial)
+    TEST(Tree, RemoveTrivial)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         root.emplace<Node>("foo");
         ASSERT_TRUE(root.contains("foo"));
@@ -123,10 +125,10 @@ namespace genoaf::test
         EXPECT_EQ(root.size(), 0);
     }
 
-    TEST(SceneTree, RemoveSubtreeByErase)
+    TEST(Tree, RemoveSubtreeByErase)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         Node::Wptr level3 = root.emplace<InnerNode>("level-1")
                                 .emplace<InnerNode>("level-2")
@@ -143,10 +145,10 @@ namespace genoaf::test
         EXPECT_TRUE(level3.expired());
     }
 
-    TEST(SceneTree, RemoveSubtreeByParent)
+    TEST(Tree, RemoveSubtreeByParent)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         Node::Wptr level3 = root.emplace<InnerNode>("level-1")
                                 .emplace<InnerNode>("level-2")
@@ -165,10 +167,10 @@ namespace genoaf::test
         EXPECT_TRUE(level3.expired());
     }
 
-    TEST(SceneTree, Clear)
+    TEST(Tree, Clear)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         root.emplace<InnerNode>("level-1")
             .emplace<InnerNode>("level-2")
@@ -178,10 +180,10 @@ namespace genoaf::test
         EXPECT_TRUE(root.empty());
     }
 
-    TEST(SceneTree, Reparent)
+    TEST(Tree, Reparent)
     {
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
 
         root.emplace<InnerNode>("level-1a")
             .emplace<InnerNode>("level-2a")
@@ -208,70 +210,70 @@ namespace genoaf::test
     {
         // NOTE: Path here is not "a path in the tree", but more
         //       like a revalidation log
-        std::unordered_map<SceneTree::Pass, Path>
-        revalidateAndLog(SceneTree & sceneTree)
+        std::unordered_map<RevalidationPass, Path>
+        revalidateAndLog(Tree & tree)
         {
-            std::unordered_map<SceneTree::Pass, Path> result;
-            for(size_t passIndex = 0; passIndex < SceneTree::kPassSize; ++passIndex)
+            std::unordered_map<RevalidationPass, Path> result;
+            for(size_t passIndex = 0; passIndex < kRevalidationPassCount; ++passIndex)
             {
-                SceneTree::Pass const pass = static_cast<SceneTree::Pass>(passIndex);
+                RevalidationPass const pass = static_cast<RevalidationPass>(passIndex);
                 Path & subResult = result[pass];
-                sceneTree.revalidate(pass,
+                tree.revalidate(pass,
                     [&subResult](Node const & node) -> bool
                     {
                         subResult.emplace_back(node.id());
                         return true;
                     });
             }
-            sceneTree.finish();
+            tree.finish();
             return result;
         }
     }
 
-    TEST(SceneTree, StructuralPass)
+    TEST(Tree, StructuralPass)
     {
         // build the testbed
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
         root.emplace<InnerNode>("foo");
 
         // perform revalidation pass
-        auto firstPass = revalidateAndLog(sceneTree);
-        EXPECT_EQ(firstPass.at(SceneTree::Pass::kStructure), (Path{"*", "foo"}));
+        auto firstPass = revalidateAndLog(tree);
+        EXPECT_EQ(firstPass.at(RevalidationPass::kStructure), (Path{"*", "foo"}));
 
         // ensure it won't be revalidated twice
-        auto secondPass = revalidateAndLog(sceneTree);
-        EXPECT_TRUE(secondPass.at(SceneTree::Pass::kStructure).empty());
+        auto secondPass = revalidateAndLog(tree);
+        EXPECT_TRUE(secondPass.at(RevalidationPass::kStructure).empty());
     }
 
-    TEST(SceneTree, MarkDirty)
+    TEST(Tree, MarkDirty)
     {
         // build the testbed
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
         root.emplace<InnerNode>("foo")
             .emplace<Node>("bar");
 
         // mark dirty
         root.at<Node>(Path{"foo", "bar"})
-            .markDirty(SceneTree::Pass::kTransforms);
+            .markDirty(RevalidationPass::kTransforms);
 
         // check which passes has been revalidated
-        auto logs = revalidateAndLog(sceneTree);
-        EXPECT_EQ(logs.at(SceneTree::Pass::kStructure), (Path{"*", "foo", "bar"}));
-        EXPECT_TRUE(logs.at(SceneTree::Pass::kProperties).empty());
-        EXPECT_TRUE(logs.at(SceneTree::Pass::kAnimation).empty());
-        EXPECT_TRUE(logs.at(SceneTree::Pass::kOrigins).empty());
-        EXPECT_EQ(logs.at(SceneTree::Pass::kTransforms), (Path{"bar"}));
-        EXPECT_TRUE(logs.at(SceneTree::Pass::kOutlines).empty());
-        EXPECT_TRUE(logs.at(SceneTree::Pass::kVisibility).empty());
+        auto logs = revalidateAndLog(tree);
+        EXPECT_EQ(logs.at(RevalidationPass::kStructure), (Path{"*", "foo", "bar"}));
+        EXPECT_TRUE(logs.at(RevalidationPass::kProperties).empty());
+        EXPECT_TRUE(logs.at(RevalidationPass::kAnimation).empty());
+        EXPECT_TRUE(logs.at(RevalidationPass::kOrigins).empty());
+        EXPECT_EQ(logs.at(RevalidationPass::kTransforms), (Path{"bar"}));
+        EXPECT_TRUE(logs.at(RevalidationPass::kOutlines).empty());
+        EXPECT_TRUE(logs.at(RevalidationPass::kVisibility).empty());
     }
 
-    TEST(SceneTree, ReparentDirtySubtree)
+    TEST(Tree, ReparentDirtySubtree)
     {
         // build the testbed
-        SceneTree sceneTree;
-        auto & root = sceneTree.root();
+        Tree tree;
+        auto & root = tree.root();
         root.emplace<InnerNode>("left");
         root.emplace<InnerNode>("right");
 
@@ -281,17 +283,17 @@ namespace genoaf::test
 
         // mark dirty
         root.at<Node>(Path{"left", "sub-tree-a", "sub-tree-b"})
-            .markDirty(SceneTree::Pass::kTransforms);
+            .markDirty(RevalidationPass::kTransforms);
         root.at<Node>(Path{"left", "sub-tree-a", "sub-tree-b", "sub-tree-c"})
-            .markDirty(SceneTree::Pass::kTransforms);
+            .markDirty(RevalidationPass::kTransforms);
 
         // reparent the subtree
         root.at<Node>(Path{"left", "sub-tree-a"}).setParent(
             root.find<InnerNode>("right"));
 
         // check pass revalidation log
-        auto logs = revalidateAndLog(sceneTree);
-        EXPECT_EQ(logs.at(SceneTree::Pass::kTransforms),
+        auto logs = revalidateAndLog(tree);
+        EXPECT_EQ(logs.at(RevalidationPass::kTransforms),
                   (Path{"sub-tree-b", "sub-tree-c"}));
     }
 }
