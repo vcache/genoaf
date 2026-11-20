@@ -175,9 +175,6 @@ namespace genoaf::scene
         }
 
     private:
-        void attach(Node & node);
-        void detach(Node const & node);
-
         bool updateLevel() override;
 
     private:

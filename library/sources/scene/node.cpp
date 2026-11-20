@@ -38,23 +38,32 @@ namespace genoaf::scene
         // sudden destroy after "oldParent->detach()"
         [[maybe_unused]] Sptr thisGuard = shared_from_this();
 
-        // TODO: if attach or detach throws, the node may become into broken state (double-parented)
-
+        // change structure
         if (newParent)
         {
-            newParent->attach(*this);
+            auto [_, inserted] = newParent->_children->emplace(id(), shared_from_this());
+            GENOAF_INVARIANT(inserted, "failed to insert \"{}\" into \"{}\"", id(), newParent->id());
         }
 
-        _parent = newParent;
+        _parent = newParent; // may not throw
 
         if (oldParent)
         {
-            oldParent->detach(*this);
+            // may not throw (since hash/eq are std)
+            oldParent->_children->erase(id());
         }
 
+        // update level of the node
         updateLevel();
 
+        // setup dirtiness marks
         markDirty(RevalidationPass::kStructure);
+
+        if (newParent)
+            newParent->markDirty(RevalidationPass::kStructure);
+
+        if (oldParent)
+            oldParent->markDirty(RevalidationPass::kStructure);
     }
 
     void Node::setParent(InnerNode & newParent)

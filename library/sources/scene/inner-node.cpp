@@ -72,19 +72,6 @@ namespace genoaf::scene
                                                : Node::CSptr{};
     }
 
-    void InnerNode::attach(Node & node)
-    {
-        auto [_, inserted] = _children->emplace(node.id(), node.shared_from_this());
-        GENOAF_INVARIANT(inserted, "failed to insert \"{}\" into \"{}\"", node.id(), id());
-        markDirty(RevalidationPass::kStructure);
-    }
-
-    void InnerNode::detach(Node const & node)
-    {
-        _children->erase(node.id());
-        markDirty(RevalidationPass::kStructure);
-    }
-
     bool InnerNode::updateLevel()
     {
         // TODO: can be implemented w/o recursion
